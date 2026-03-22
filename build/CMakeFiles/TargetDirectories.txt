@@ -1,0 +1,3 @@
+/home/dvh/Downloads/capital/f3tool/build/CMakeFiles/f3tool.dir
+/home/dvh/Downloads/capital/f3tool/build/CMakeFiles/edit_cache.dir
+/home/dvh/Downloads/capital/f3tool/build/CMakeFiles/rebuild_cache.dir
