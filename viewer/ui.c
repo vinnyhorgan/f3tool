@@ -61,6 +61,10 @@ int filter_file(ViewerState *state, int index)
     
     CapitalFileInfo *file = &state->archive->files[index];
     
+    if (file->entry.data_size == 0) {
+        return 0;
+    }
+    
     if (state->filter_type > 0 && file->entry.type != state->filter_type) {
         return 0;
     }
@@ -207,6 +211,10 @@ void update_viewer(ViewerState *state)
 {
     if (!state->archive) return;
     
+    file_list_bounds = (Rectangle){ 0, 0, FILE_LIST_WIDTH, GetScreenHeight() - FOOTER_HEIGHT };
+    preview_bounds = (Rectangle){ FILE_LIST_WIDTH, 0, GetScreenWidth() - FILE_LIST_WIDTH, GetScreenHeight() - FOOTER_HEIGHT };
+    footer_bounds = (Rectangle){ 0, GetScreenHeight() - FOOTER_HEIGHT, GetScreenWidth(), FOOTER_HEIGHT };
+    
     int filtered_count = get_filtered_count(state);
     int visible_height = (int)(file_list_bounds.height - 20) / 20;
     if (visible_height <= 0) visible_height = 1;
@@ -248,12 +256,29 @@ void update_viewer(ViewerState *state)
         if (state->selected_index < 0) state->selected_index = 0;
     }
     
+    if (IsKeyPressed(KEY_SPACE)) {
+        if (state->music_loaded) {
+            if (state->is_playing) {
+                StopMusicStream(state->current_music);
+                state->is_playing = false;
+            } else {
+                PlayMusicStream(state->current_music);
+                state->is_playing = true;
+            }
+        }
+    }
+    
     int wheel = (int)GetMouseWheelMove();
     if (wheel != 0) {
-        state->scroll_offset -= wheel * 3;
-        if (state->scroll_offset < 0) state->scroll_offset = 0;
-        if (state->scroll_offset > filtered_count - visible_height) {
-            state->scroll_offset = filtered_count - visible_height;
+        Vector2 mouse = GetMousePosition();
+        if (CheckCollisionPointRec(mouse, file_list_bounds)) {
+            state->scroll_offset -= wheel * 3;
+            if (state->scroll_offset < 0) state->scroll_offset = 0;
+            int max_scroll = filtered_count - visible_height;
+            if (max_scroll < 0) max_scroll = 0;
+            if (state->scroll_offset > max_scroll) {
+                state->scroll_offset = max_scroll;
+            }
         }
     }
     
@@ -292,7 +317,8 @@ void update_viewer(ViewerState *state)
                             state->current_music = LoadMusicStreamFromMemory(".ogg", data, (int)size);
                             if (state->current_music.ctxData) {
                                 state->music_loaded = true;
-                                state->is_playing = false;
+                                state->is_playing = true;
+                                PlayMusicStream(state->current_music);
                             }
                         }
                     }
@@ -304,10 +330,6 @@ void update_viewer(ViewerState *state)
 
 void draw_viewer(ViewerState *state)
 {
-    file_list_bounds = (Rectangle){ 0, 0, FILE_LIST_WIDTH, GetScreenHeight() - FOOTER_HEIGHT };
-    preview_bounds = (Rectangle){ FILE_LIST_WIDTH, 0, GetScreenWidth() - FILE_LIST_WIDTH, GetScreenHeight() - FOOTER_HEIGHT };
-    footer_bounds = (Rectangle){ 0, GetScreenHeight() - FOOTER_HEIGHT, GetScreenWidth(), FOOTER_HEIGHT };
-    
     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), (Color){20, 20, 20, 255});
     
     draw_file_list(state);

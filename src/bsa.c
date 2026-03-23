@@ -272,9 +272,8 @@ int bsa_extract_file(BSArchive *archive, const char *filename, uint8_t **out_dat
                         *out_data = uncompressed;
                         *out_size = uncompressedSize;
                     } else {
-                        free(data);
-                        *out_data = NULL;
-                        *out_size = 0;
+                        *out_data = data;
+                        *out_size = dataSize;
                     }
                 } else {
                     *out_data = data;
