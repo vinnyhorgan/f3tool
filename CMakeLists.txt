@@ -6,6 +6,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 option(BUILD_TOOLS "Build command line tools" ON)
 option(BUILD_LIB "Build shared library" OFF)
+option(BUILD_VIEWER "Build raylib-based archive viewer" OFF)
 
 # Core libraries we need
 find_package(PkgConfig REQUIRED)
@@ -85,4 +86,8 @@ if(BUILD_LIB)
         ${JPEG_LIBRARIES}
         m
     )
+endif()
+
+if(BUILD_VIEWER)
+    add_subdirectory(viewer)
 endif()

@@ -17,35 +17,51 @@ f3tool/
 ├── CMakeLists.txt           # Build configuration
 ├── AGENTS.md                # This file
 ├── .gitignore               # Git ignore patterns
-├── include/
-│   ├── bsa.h              # BSA archive structures and API
-│   ├── esm.h              # ESM file structures
-│   ├── archive.h          # Capital archive format definition
-│   ├── audio.h            # Audio format detection
-│   ├── image.h            # DDS/PNG image handling
-│   ├── hash.h             # Bethesda filename hash
-│   └── util.h             # Utility functions
-├── src/
-│   ├── bsa.c             # BSA parsing and extraction
-│   ├── esm.c             # ESM parsing
-│   ├── archive.c          # .capital archive creation
-│   ├── audio.c           # Audio loading (WAV/MP3/OGG)
-│   ├── image.c           # DDS parsing/PNG encoding
-│   ├── hash.c            # Hash implementation
-│   ├── util.c            # Utility implementations
-│   └── main.c            # CLI entry point
-└── build/                 # Build output (gitignored)
+├── include/                  # Headers for f3tool
+│   ├── bsa.h
+│   ├── esm.h
+│   ├── archive.h
+│   ├── audio.h
+│   ├── image.h
+│   ├── hash.h
+│   └── util.h
+├── src/                     # f3tool source
+│   ├── bsa.c
+│   ├── esm.c
+│   ├── archive.c
+│   ├── audio.c
+│   ├── image.c
+│   ├── hash.c
+│   ├── util.c
+│   └── main.c
+└── viewer/                  # Raylib-based archive viewer
+    ├── CMakeLists.txt
+    ├── archive.h
+    ├── archive.c
+    ├── ui.h
+    ├── ui.c
+    └── main.c
 ```
 
 ## Building
 
+### f3tool (CLI extraction tool)
 ```bash
 cd f3tool/build
 cmake .. && make
 ```
 
+### capital_viewer (GUI archive viewer)
+```bash
+cd f3tool/build
+cmake .. -DBUILD_VIEWER=ON && make capital_viewer
+```
+
+**Note:** The viewer requires raylib. CMake will fetch it automatically if not found.
+
 ## Usage
 
+### f3tool (CLI)
 ```bash
 # Full extraction (ESM + audio + art + video)
 ./f3tool /path/to/fallout3 /tmp/output -A
@@ -69,6 +85,21 @@ cmake .. && make
 #   -n, --limit N  Limit extraction to N files per type
 #   -v, --verbose  Verbose output
 ```
+
+### capital_viewer (GUI)
+```bash
+# Run the viewer
+./capital_viewer /path/to/full.capital
+
+# Example
+./capital_viewer ../full.capital
+```
+
+**Viewer controls:**
+- Arrow keys: Navigate file list
+- Click: Select and preview file
+- Filter buttons: Filter by type (All/ESM/Audio/Art/Video)
+- Play/Pause: Audio playback control
 
 ## Capital Archive Format
 
@@ -110,10 +141,11 @@ Full extraction from Fallout 3 (GOG version):
 - ✅ DDS→PNG conversion via ffmpeg with fallback to raw DDS
 - ✅ Video extraction (BIK → MPEG1/MP2)
 - ✅ Capital archive creation
+- ✅ Capital archive viewer (raylib GUI)
 
 ### Known Issues
 - ⚠️ OGG conversion via libvorbis (in audio.c) crashes on certain files - using ffmpeg instead
-- ⚠️ `capital_extract_all()` not implemented - cannot yet unpack .capital archives
+- ⚠️ `capital_extract_all()` not implemented - use viewer to browse
 
 ### DLC Audio
 DLC audio files are intentionally excluded from extraction.
@@ -140,6 +172,12 @@ DLC audio files are intentionally excluded from extraction.
 - Path check: `textures\*` (all game textures)
 - DDS→PNG conversion via ffmpeg, fallback to raw DDS if conversion fails
 
+### Archive Viewer (viewer/)
+- Uses raylib for GUI rendering
+- Loads images directly via `LoadImageFromMemory()`
+- Audio playback via `LoadMusicStreamFromMemory()`
+- File list with filtering and search
+
 ### FFmpeg Commands Used
 ```bash
 # Audio to OGG Vorbis (stereo, ~128kbps VBR)
@@ -157,4 +195,5 @@ ffmpeg -y -i input.dds -compression_level 9 -pred median output.png
 
 ## Next Steps
 1. Implement `capital_extract_all()` to unpack .capital archives
-2. Add progress reporting for long extractions
+2. Add search functionality to viewer
+3. Add video playback to viewer
