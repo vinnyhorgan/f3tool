@@ -8,18 +8,15 @@ int capital_viewer_open(CapitalArchive *archive, const char *path)
     
     archive->fp = fopen(path, "rb");
     if (!archive->fp) {
-        fprintf(stderr, "Failed to open file: %s\n", path);
         return -1;
     }
     
     if (fread(&archive->header, sizeof(CapitalHeader), 1, archive->fp) != 1) {
-        fprintf(stderr, "Failed to read header\n");
         fclose(archive->fp);
         return -1;
     }
     
     if (archive->header.magic != 0x43415021) {
-        fprintf(stderr, "Invalid magic: 0x%X expected 0x%X\n", archive->header.magic, 0x43415021);
         fclose(archive->fp);
         return -1;
     }
@@ -30,64 +27,51 @@ int capital_viewer_open(CapitalArchive *archive, const char *path)
         return -1;
     }
     
-    size_t index_size = 0;
     for (uint32_t i = 0; i < archive->header.entry_count; i++) {
         uint8_t type;
         uint16_t path_len;
         uint32_t data_size, offset;
+        uint32_t meta[3];
         
         if (fread(&type, 1, 1, archive->fp) != 1) break;
         if (fread(&path_len, 2, 1, archive->fp) != 1) break;
         if (fread(&data_size, 4, 1, archive->fp) != 1) break;
         if (fread(&offset, 4, 1, archive->fp) != 1) break;
+        if (fread(meta, 12, 1, archive->fp) != 1) break;
         
         archive->files[i].entry.type = type;
         archive->files[i].entry.path_length = path_len;
         archive->files[i].entry.data_size = data_size;
         archive->files[i].entry.offset = offset;
         
-        size_t metadata_size = 0;
         if (type == 1) {
-            metadata_size = 4;
-            fread(&archive->files[i].entry.metadata.esm.flags, 4, 1, archive->fp);
+            archive->files[i].entry.metadata.esm.flags = meta[0];
         } else if (type == 2) {
-            metadata_size = 8;
-            fread(&archive->files[i].entry.metadata.audio.sample_rate, 8, 1, archive->fp);
+            archive->files[i].entry.metadata.audio.sample_rate = meta[0];
+            archive->files[i].entry.metadata.audio.channels = (uint16_t)meta[1];
+            archive->files[i].entry.metadata.audio.bits_per_sample = (uint16_t)(meta[1] >> 16);
         } else if (type == 3) {
-            metadata_size = 12;
-            fread(&archive->files[i].entry.metadata.art.width, 12, 1, archive->fp);
+            archive->files[i].entry.metadata.art.width = meta[0];
+            archive->files[i].entry.metadata.art.height = meta[1];
+            archive->files[i].entry.metadata.art.format = meta[2];
         } else if (type == 4) {
-            metadata_size = 8;
-            fread(&archive->files[i].entry.metadata.video.duration_ms, 8, 1, archive->fp);
+            archive->files[i].entry.metadata.video.duration_ms = meta[0];
+            archive->files[i].entry.metadata.video.reserved = meta[1];
         }
         
         archive->files[i].path = malloc(path_len + 1);
         if (archive->files[i].path) {
-            fread(archive->files[i].path, 1, path_len, archive->fp);
+            if (fread(archive->files[i].path, 1, path_len, archive->fp) != path_len) {
+                free(archive->files[i].path);
+                archive->files[i].path = NULL;
+                break;
+            }
             archive->files[i].path[path_len] = '\0';
         }
-        
-        index_size += 1 + 2 + 4 + 4 + metadata_size + path_len;
     }
     
-    size_t data_start = sizeof(CapitalHeader) + index_size;
-    
+    archive->file_data = NULL;
     archive->data_size = 0;
-    for (uint32_t i = 0; i < archive->header.entry_count; i++) {
-        archive->data_size += archive->files[i].entry.data_size;
-    }
-    
-    archive->file_data = malloc(archive->data_size);
-    if (archive->file_data) {
-        fseek(archive->fp, data_start, SEEK_SET);
-        fread(archive->file_data, 1, archive->data_size, archive->fp);
-        
-        size_t cumulative_offset = 0;
-        for (uint32_t i = 0; i < archive->header.entry_count; i++) {
-            archive->files[i].entry.offset = cumulative_offset;
-            cumulative_offset += archive->files[i].entry.data_size;
-        }
-    }
     
     return 0;
 }
@@ -119,21 +103,22 @@ int capital_viewer_get_file(CapitalArchive *archive, int index, uint8_t **data, 
         return -1;
     }
     
-    if (!archive->file_data) {
-        return -1;
-    }
-    
     CapitalFileInfo *file = &archive->files[index];
     
-    if (file->entry.offset >= archive->data_size) {
+    uint8_t *buffer = malloc(file->entry.data_size);
+    if (!buffer) return -1;
+    
+    if (fseek(archive->fp, file->entry.offset, SEEK_SET) != 0) {
+        free(buffer);
         return -1;
     }
     
-    if (file->entry.offset + file->entry.data_size > archive->data_size) {
+    if (fread(buffer, 1, file->entry.data_size, archive->fp) != file->entry.data_size) {
+        free(buffer);
         return -1;
     }
     
-    *data = archive->file_data + file->entry.offset;
+    *data = buffer;
     *size = file->entry.data_size;
     
     return 0;

@@ -110,15 +110,15 @@ cmake .. -DBUILD_VIEWER=ON && make capital_viewer
 - Flags
 - Reserved[16]
 
-**Entry (variable, 23+ bytes):**
-- Type (1=ESM, 2=Audio, 3=Art, 4=Video)
+**Entry Header (fixed 23 bytes):**
+- Type (1 byte): 1=ESM, 2=Audio, 3=Art, 4=Video
 - Path length (2 bytes)
 - Data size (4 bytes)
-- Offset (4 bytes)
-- Metadata (varies by type: ESM=4, Audio=8, Art=12, Video=8 bytes)
-- Path (variable length)
+- Offset (4 bytes): absolute offset to data in archive
+- Reserved (12 bytes): for alignment, ignored
+- **Total header: 23 bytes (fixed size, regardless of type)**
 
-**Entry data** follows the index.
+**Entry data** follows the header at the specified offset.
 
 ## Extraction Results
 
