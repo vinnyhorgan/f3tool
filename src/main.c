@@ -132,17 +132,15 @@ static int parse_args(int argc, char **argv, AppOptions *opts)
 
 static int is_ui_art_file(const char *filename)
 {
-    const char *ui_patterns[] = {
-        "interface\\",
-        "menus\\",
-        "textures\\interface\\",
-        NULL
-    };
+    const char *ext = strrchr(filename, '.');
+    if (!ext) return 0;
     
-    for (int i = 0; ui_patterns[i]; i++) {
-        if (strncasecmp(filename, ui_patterns[i], strlen(ui_patterns[i])) == 0) {
-            return 1;
-        }
+    if (strcasecmp(ext, ".dds") != 0 && strcasecmp(ext, ".tga") != 0) {
+        return 0;
+    }
+    
+    if (strncasecmp(filename, "textures\\", 9) == 0) {
+        return 1;
     }
     
     return 0;
@@ -811,6 +809,8 @@ static int build_capital_archive(const char *f3_path, const char *output_path, A
                                     art_count++;
                                 }
                                 free(png_data);
+                            } else if (capital_add_art(&archive, filename, data, data_size, 0, 0, 0) == 0) {
+                                art_count++;
                             }
                         } else {
                             if (capital_add_art(&archive, filename, data, data_size, 0, 0, 0) == 0) {
