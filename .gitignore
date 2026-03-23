@@ -1,0 +1,13 @@
+# CMake build directory
+build/
+
+# CMake cache
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Compiled binary
+f3tool
+*.o
